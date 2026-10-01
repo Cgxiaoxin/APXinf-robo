@@ -175,8 +175,16 @@ def load_bare_model(
     finite and plausible, which is what makes the difference expensive to find
     later.
 
+    OpenPI PyTorch exports are the same class of load-time gap for architecture:
+    ``Pi05Policy.from_pretrained`` injects ``config_json`` from ``metadata.pt``
+    (``num_views``, horizon, …). A bare handle that skips that silently runs
+    ``Pi05Config::default()`` (3 views) against L2's recorded 2-view tensors.
+    This loader resolves that layout the same way L2 does.
+
     ``tactics=<path>`` overrides the selection; ``tactics=None`` forces the
     provider defaults, which is how you measure what the tuning is worth.
+    ``config_json=`` is forwarded when supplied; otherwise it is filled from the
+    checkpoint layout when one is declared.
     """
     apxinf = require_apxinf()
     if "tactics" not in kwargs:
@@ -194,7 +202,21 @@ def load_bare_model(
         option = {"model_variant": precision}
     else:
         option = {"precision": precision}
-    return apxinf.ModelRunner.load(model, str(model_dir), device=device, **option, **kwargs)
+
+    load_path = str(model_dir)
+    if model == "pi05" and "config_json" not in kwargs:
+        from apxinf.checkpoints import detect_checkpoint, has_layout_metadata
+
+        root = pathlib.Path(model_dir)
+        if has_layout_metadata(root):
+            layout = detect_checkpoint(root)
+            text = layout.config_json_text()
+            if text:
+                kwargs["config_json"] = text
+            if layout.weights is not None:
+                load_path = str(layout.weights)
+
+    return apxinf.ModelRunner.load(model, load_path, device=device, **option, **kwargs)
 
 
 # --- checkpoint-free path ----------------------------------------------------

@@ -195,6 +195,36 @@ class BareInterfaceLoadTest(unittest.TestCase):
         self.engine.load_bare_model("/ckpt", model="walloss", tactics="/mine.json")
         self.assertEqual(self.loaded[0][4]["tactics"], "/mine.json")
 
+    def test_openpi_layout_config_json_is_injected_like_l2(self) -> None:
+        # Same class of load-time gap as tactics: L2 injects metadata.pt arch
+        # via config_json=; L1 must too or num_views (etc.) silently diverge.
+        import json
+        from types import SimpleNamespace
+
+        import apxinf.checkpoints as checkpoints
+
+        original_has = checkpoints.has_layout_metadata
+        original_detect = checkpoints.detect_checkpoint
+        checkpoints.has_layout_metadata = lambda _root: True
+        checkpoints.detect_checkpoint = lambda _root: SimpleNamespace(
+            config_json_text=lambda: json.dumps(
+                {"action_dim": 32, "action_horizon": 15, "num_views": 2},
+                sort_keys=True,
+            ),
+            weights="/ckpt/model.safetensors",
+        )
+        self.addCleanup(
+            lambda: (
+                setattr(checkpoints, "has_layout_metadata", original_has),
+                setattr(checkpoints, "detect_checkpoint", original_detect),
+            )
+        )
+
+        self.engine.load_bare_model("/ckpt", device="cuda:0", precision="bf16")
+        path, kwargs = self.loaded[0][1], self.loaded[0][4]
+        self.assertEqual(path, "/ckpt/model.safetensors")
+        self.assertEqual(json.loads(kwargs["config_json"])["num_views"], 2)
+
 
 class _RecordingModel:
     """Wraps the engine handle to capture exactly what L2 feeds L1."""
