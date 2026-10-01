@@ -1,0 +1,20 @@
+---
+description: Commit code changes promptly after substantive edits
+alwaysApply: true
+---
+
+# Commit promptly
+
+After any substantive **add / change / fix** to maintained project code (Rust, Python, configs, tests, docs that ship with the repo):
+
+1. **Commit soon** — do not leave a finished logical change sitting only in the working tree across long digressions.
+2. Prefer **small, focused commits** (one concern each) over a single end-of-day dump.
+3. Follow the repo git protocol: status + diff + recent log style → stage only intended files → commit via HEREDOC → verify with `git status`.
+4. **Never** commit secrets, credentials, or `devlocal/` artifacts (reports/logs/gold under `devlocal/` stay local).
+5. Submodule work: commit inside `apxinf/` first, then bump the parent submodule pointer in a separate commit when the parent should track it.
+6. If the user explicitly says not to commit yet, wait; otherwise assume timely commits are required for this project.
+
+```text
+❌ BAD: finish a kernel/arch fix, keep chatting for an hour, still uncommitted
+✅ GOOD: land the fix → commit → continue to the next task
+```
