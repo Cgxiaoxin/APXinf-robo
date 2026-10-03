@@ -11,3 +11,6 @@ venv/
 .mypy_cache/
 devlocal/
 .DS_Store
+
+# Cargo / maturin local build dirs (never commit)
+target/
